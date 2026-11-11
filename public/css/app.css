@@ -1,13 +1,21 @@
+/*
+ * Palette CheckDeal : bleu nuit #09234B, vert #00C95A, blanc.
+ * Le vert de marque est trop clair pour du texte blanc ou un texte sur blanc
+ * (contraste 2,3:1) : il sert de fond aux boutons, avec un texte bleu nuit
+ * (7:1). Les textes « fiable » utilisent un vert plus foncé de la même teinte.
+ */
 :root {
-  --fond: #f6f7f9;
+  --nuit: #09234B;
+  --vert-marque: #00C95A;
+  --fond: #f5f7fa;
   --carte: #ffffff;
-  --texte: #1c2330;
-  --discret: #5f6b7a;
-  --bord: #dfe3e8;
-  --accent: #2456d6;
-  --accent-fonce: #1a42a8;
-  --vert: #1f8a4c;
-  --vert-fond: #e6f4ec;
+  --texte: #09234B;
+  --discret: #4f5d73;
+  --bord: #dde3ec;
+  --accent: #09234B;
+  --accent-fonce: #061833;
+  --vert: #007a37;
+  --vert-fond: #e3f9ec;
   --orange: #b86a00;
   --orange-fond: #fdf1df;
   --rouge: #c0362c;
@@ -30,13 +38,14 @@ a { color: var(--accent); }
 .etroit { max-width: 680px; }
 
 header.site { background: var(--carte); border-bottom: 1px solid var(--bord); }
-header.site .conteneur { display: flex; align-items: center; justify-content: space-between; height: 60px; }
-.marque { font-weight: 800; font-size: 19px; color: var(--texte); text-decoration: none; }
-.marque span { color: var(--accent); }
+header.site .conteneur { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+.marque { display: inline-flex; align-items: center; }
+.marque img { height: 40px; width: auto; display: block; }
 
 main { padding: 32px 0 48px; }
 
-footer.site { border-top: 1px solid var(--bord); color: var(--discret); font-size: 14px; padding: 24px 0; }
+footer.site { background: var(--nuit); color: #c9d3e3; font-size: 14px; padding: 24px 0; }
+footer.site a { color: #fff; }
 
 h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 0 0 12px; }
 h2 { font-size: 22px; margin: 40px 0 16px; }
@@ -61,9 +70,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 
 .bouton {
   display: inline-block; padding: 12px 20px; border: 0; border-radius: 8px; cursor: pointer;
-  background: var(--accent); color: #fff; font: inherit; font-weight: 700; text-decoration: none;
+  background: var(--vert-marque); color: var(--nuit); font: inherit; font-weight: 800; text-decoration: none;
 }
-.bouton:hover { background: var(--accent-fonce); }
+.bouton:hover { background: #00b350; }
 .bouton.secondaire { background: #e9edf3; color: var(--texte); }
 .bouton.large { width: 100%; margin-top: 18px; }
 
@@ -74,7 +83,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .etapes li { counter-increment: etape; display: flex; gap: 12px; align-items: baseline; }
 .etapes li::before {
   content: counter(etape); flex: none; width: 28px; height: 28px; border-radius: 50%;
-  background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center;
+  background: var(--vert-marque); color: var(--nuit); font-weight: 800; display: grid; place-items: center;
 }
 
 /* Résultat */

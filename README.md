@@ -1,4 +1,4 @@
-# Vérif Annonce — MVP en mode valet
+# CheckDeal — MVP en mode valet
 
 Un acheteur colle le lien d'une annonce d'occasion et son e-mail. Un analyste la vérifie dans le back-office, et l'acheteur reçoit un **indice de confiance de 0 à 100**, avec les raisons et des conseils. Quelques jours plus tard, on lui demande ce qu'il a décidé : c'est ce retour qui donne sa valeur à la base.
 
