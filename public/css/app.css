@@ -58,6 +58,9 @@ h3 { font-size: 17px; margin: 0 0 6px; }
 .carte + .carte { margin-top: 16px; }
 
 .grille { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+/* Dans une grille, c'est `gap` qui espace : la marge des cartes empilées
+   décalait les cartes 2 à 4, plus courtes que la première. */
+.grille > .carte + .carte { margin-top: 0; }
 
 label { display: block; font-weight: 600; margin: 14px 0 6px; }
 label.case { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; }
