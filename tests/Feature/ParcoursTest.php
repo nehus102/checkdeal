@@ -39,7 +39,32 @@ class ParcoursTest extends TestCase
     {
         $this->withSession(['admin' => true])
             ->post("/admin/annonces/{$listing->id}", array_merge(['action' => 'envoyer'], $donnees))
-            ->assertRedirect('/admin');
+            ->assertRedirect("/admin/annonces/{$listing->id}");
+    }
+
+    public function test_la_fiche_affiche_l_indice_sans_rien_cliquer(): void
+    {
+        $submission = $this->deposer();
+        $this->evaluer($submission->listing, ['price_amount' => '123', 'comparable_prices' => '456', 'seller_rating' => '4,5', 'seller_review_count' => '13']);
+
+        $this->withSession(['admin' => true])->get("/admin/annonces/{$submission->listing_id}")
+            ->assertOk()
+            ->assertSee('Dernière évaluation enregistrée')
+            ->assertSee('Prix non jugé : 1 prix comparable saisi, il en faut 3.');
+    }
+
+    public function test_une_saisie_refusee_garde_les_valeurs_tapees(): void
+    {
+        $submission = $this->deposer();
+        $url = "/admin/annonces/{$submission->listing_id}";
+
+        $this->withSession(['admin' => true])->from($url)
+            ->post($url, ['action' => 'envoyer', 'title' => 'Vélo carbone', 'score_final' => '40'])
+            ->assertRedirect($url)
+            ->assertSessionHasErrors('raison_ajustement');
+
+        $this->withSession(['admin' => true])->get($url)->assertSee('value="Vélo carbone"', false);
+        $this->assertSame(0, $submission->listing->assessments()->count());
     }
 
     public function test_accueil_et_depot_d_une_demande_avec_capture(): void

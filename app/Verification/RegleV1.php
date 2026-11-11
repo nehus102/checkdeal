@@ -184,7 +184,7 @@ class RegleV1
     }
 
     /** « 450 ; 520 ; 480 », « 450, 520 », ou une valeur par ligne. */
-    private static function liste(?string $valeur): array
+    public static function liste(?string $valeur): array
     {
         // Une virgule suivie d'un espace sépare deux prix ; collée, c'est une décimale.
         $morceaux = preg_split('/[;\n\r]+|,\s+/', (string) $valeur) ?: [];

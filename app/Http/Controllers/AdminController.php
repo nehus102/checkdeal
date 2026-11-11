@@ -58,23 +58,33 @@ class AdminController extends Controller
         ]);
     }
 
-    public function show(Listing $listing)
+    /**
+     * L'aperçu est calculé dès l'ouverture, sur les dernières observations :
+     * l'indice d'une annonce déjà relevée se voit sans cliquer sur rien.
+     */
+    public function show(Listing $listing, EvaluationService $evaluations)
     {
-        return $this->formulaire($listing, $listing->observationsCourantes());
+        $obs = $listing->observationsCourantes();
+
+        return $this->formulaire($listing, $obs, $obs === [] ? null : $evaluations->apercu($obs));
     }
 
     public function evaluer(Request $request, Listing $listing, EvaluationService $evaluations)
     {
         $request->validate([
             'price_amount' => ['nullable', 'regex:/^\d+([.,]\d{1,2})?$/'],
-            'seller_rating' => ['nullable', 'numeric', 'min:0'],
-            'seller_rating_max' => ['nullable', 'numeric', 'min:1'],
+            // Virgule acceptée : « 4,5 » est la façon normale d'écrire une note.
+            'seller_rating' => ['nullable', 'regex:/^\d+([.,]\d+)?$/'],
+            'seller_rating_max' => ['nullable', 'regex:/^[1-9]\d*([.,]\d+)?$/'],
             'seller_review_count' => ['nullable', 'integer', 'min:0'],
             'seller_account_created_at' => ['nullable', 'date'],
             'score_final' => ['nullable', 'integer', 'min:0', 'max:100'],
             'raison_ajustement' => ['nullable', 'required_with:score_final', 'string', 'max:255'],
         ], [
             'raison_ajustement.required_with' => "Notez pourquoi vous ajustez l'indice : c'est ce qui permettra de corriger les règles.",
+            'price_amount.regex' => 'Prix : un nombre, par exemple 450 ou 450,50.',
+            'seller_rating.regex' => 'Note : un nombre, par exemple 4,5.',
+            'seller_rating_max.regex' => 'Échelle de la note : un nombre, par exemple 5 ou 100.',
         ]);
 
         $obs = EvaluationService::observationsDepuis($listing, $request->all());
@@ -83,10 +93,16 @@ class AdminController extends Controller
             return $this->formulaire($listing, $obs, $evaluations->apercu($obs), $request->all());
         }
 
+        $enAttente = $listing->submissions()->where('status', 'pending')->count();
         $scoreFinal = $request->filled('score_final') ? (int) $request->input('score_final') : null;
-        $evaluations->enregistrer($listing, $obs, $scoreFinal, $request->input('raison_ajustement'), $request->input('conseil'), $request->input('justification'));
+        $assessment = $evaluations->enregistrer($listing, $obs, $scoreFinal, $request->input('raison_ajustement'), $request->input('conseil'), $request->input('justification'));
 
-        return redirect()->route('admin.index')->with('ok', 'Évaluation enregistrée, résultat envoyé.');
+        // On reste sur la fiche : c'est là qu'on voit ce qui vient d'être enregistré.
+        return redirect()->route('admin.show', $listing)->with('ok', "Évaluation enregistrée : {$assessment->final_score}/100. " . match ($enAttente) {
+            0 => "Aucune demande en attente : rien n'a été envoyé.",
+            1 => 'Résultat envoyé au demandeur.',
+            default => "Résultat envoyé aux {$enAttente} demandeurs.",
+        });
     }
 
     /** Ajout d'une annonce de l'échantillon témoin, tirée au hasard. */

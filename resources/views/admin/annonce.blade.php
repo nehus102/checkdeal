@@ -4,10 +4,12 @@
 @section('noindex', true)
 
 @section('contenu')
-    @php($v = fn (string $champ) => $saisie[$champ] ?? $obs[$champ] ?? '')
+    {{-- old() d'abord : après une saisie refusée, on retrouve ce qu'on avait tapé. --}}
+    @php($v = fn (string $champ) => old($champ, $saisie[$champ] ?? $obs[$champ] ?? ''))
     @php($catalogue = \App\Verification\RegleV1::CATALOGUE)
 
     <p><a href="{{ route('admin.index') }}">← File des demandes</a></p>
+    @if (session('ok'))<div class="ok">{{ session('ok') }}</div>@endif
     <h1 style="font-size:26px">{{ $listing->title ?: 'Annonce #' . $listing->id }}</h1>
     <p class="coupe">
         {{ \App\Verification\AnnonceUrl::LIBELLES[$listing->platform] ?? $listing->platform }} ·
@@ -15,7 +17,8 @@
     </p>
 
     <div class="deux-colonnes">
-        <form method="post" action="{{ route('admin.evaluer', $listing) }}">
+        {{-- Un double clic enregistrait deux évaluations : le second envoi est bloqué. --}}
+        <form method="post" action="{{ route('admin.evaluer', $listing) }}" onsubmit="if (this.dataset.envoye) { return false; } this.dataset.envoye = '1';">
             @csrf
             @if ($errors->any())
                 <div class="erreurs">{{ $errors->first() }}</div>
@@ -54,7 +57,7 @@
                 <h3>Signaux à confirmer</h3>
                 <p class="discret petit">« Non vérifié » n'est pas « non » : il ne compte ni pour ni contre, mais baisse la fiabilité des statistiques.</p>
                 @foreach (\App\Verification\RegleV1::DRAPEAUX as $code => $poids)
-                    @php($valeur = $saisie['flag_' . $code] ?? $obs['flag_' . $code] ?? (isset($suggestions[$code]) ? 'oui' : ''))
+                    @php($valeur = old('flag_' . $code, $saisie['flag_' . $code] ?? $obs['flag_' . $code] ?? (isset($suggestions[$code]) ? 'oui' : '')))
                     <div class="ligne" style="align-items:center">
                         <label for="flag_{{ $code }}" style="margin:8px 0">
                             {{ $catalogue[$code][0] }} <span class="discret petit">(−{{ $poids }})</span>
@@ -73,7 +76,18 @@
 
             @if ($apercu)
                 @php([$libelle, $couleur] = \App\Verification\RegleV1::verdict($apercu['score']))
+                @php($derniere = $historique->first())
+                @php($nbComparables = count(\App\Verification\RegleV1::liste($v('comparable_prices'))))
                 <div class="carte">
+                    <h3>Indice calculé avec les champs ci-dessus</h3>
+                    @if ($derniere)
+                        <p class="discret petit">Dernière évaluation enregistrée : <strong>{{ $derniere->final_score }}/100</strong> le {{ $derniere->created_at->format('d/m à H:i') }}@if ($derniere->final_score !== $derniere->computed_score) (calculé {{ $derniere->computed_score }}, ajusté)@endif.</p>
+                    @else
+                        <p class="discret petit">Pas encore enregistré : cliquez sur « Enregistrer et envoyer ».</p>
+                    @endif
+                    @if ($v('price_amount') !== '' && $nbComparables < \App\Verification\RegleV1::COMPARABLES_MIN)
+                        <p class="suggestion" style="display:inline-block">Prix non jugé : {{ $nbComparables }} prix comparable{{ $nbComparables > 1 ? 's' : '' }} saisi{{ $nbComparables > 1 ? 's' : '' }}, il en faut {{ \App\Verification\RegleV1::COMPARABLES_MIN }}.</p>
+                    @endif
                     <div class="score">
                         <div><span class="nombre {{ $couleur }}">{{ $apercu['score'] }}</span><span class="sur"> / 100</span></div>
                         <div><span class="pastille fond-{{ $couleur }}">{{ $libelle }}</span><div class="discret petit">fiabilité {{ $apercu['confiance'] }} · règles {{ $apercu['version'] }}@if ($apercu['mediane']) · médiane {{ number_format($apercu['mediane'], 0, ',', ' ') }} €@endif</div></div>
@@ -96,13 +110,13 @@
             <div class="carte">
                 <h3>Résultat envoyé</h3>
                 <div class="ligne">
-                    <div><label for="score_final">Ajuster l'indice <span class="discret">(facultatif)</span></label><input type="number" min="0" max="100" id="score_final" name="score_final" value="{{ $saisie['score_final'] ?? '' }}"></div>
-                    <div><label for="raison_ajustement">Pourquoi</label><input type="text" id="raison_ajustement" name="raison_ajustement" value="{{ $saisie['raison_ajustement'] ?? '' }}"></div>
+                    <div><label for="score_final">Ajuster l'indice <span class="discret">(facultatif)</span></label><input type="number" min="0" max="100" id="score_final" name="score_final" value="{{ old('score_final', $saisie['score_final'] ?? '') }}"></div>
+                    <div><label for="raison_ajustement">Pourquoi <span class="discret">(obligatoire si vous ajustez)</span></label><input type="text" id="raison_ajustement" name="raison_ajustement" value="{{ old('raison_ajustement', $saisie['raison_ajustement'] ?? '') }}"></div>
                 </div>
                 <label for="conseil">Conseil personnalisé pour l'acheteur</label>
-                <textarea id="conseil" name="conseil" placeholder="Ex. : demandez la facture et le numéro de série avant de vous déplacer.">{{ $saisie['conseil'] ?? '' }}</textarea>
+                <textarea id="conseil" name="conseil" placeholder="Ex. : demandez la facture et le numéro de série avant de vous déplacer.">{{ old('conseil', $saisie['conseil'] ?? '') }}</textarea>
                 <label for="justification">Note interne <span class="discret">(non envoyée)</span></label>
-                <textarea id="justification" name="justification">{{ $saisie['justification'] ?? '' }}</textarea>
+                <textarea id="justification" name="justification">{{ old('justification', $saisie['justification'] ?? '') }}</textarea>
 
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px">
                     <button class="bouton secondaire" type="submit" name="action" value="apercu">Calculer l'aperçu</button>
