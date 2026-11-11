@@ -18,7 +18,8 @@
 
     <div class="deux-colonnes">
         {{-- Un double clic enregistrait deux évaluations : le second envoi est bloqué. --}}
-        <form id="grille" method="post" action="{{ route('admin.evaluer', $listing) }}" data-apercu="{{ route('admin.apercu', $listing) }}" onsubmit="if (this.dataset.envoye) { return false; } this.dataset.envoye = '1';">
+        {{-- Adresse relative : la page marche ouverte par localhost comme par 127.0.0.1. --}}
+        <form id="grille" method="post" action="{{ route('admin.evaluer', $listing, false) }}" data-apercu="{{ route('admin.apercu', $listing, false) }}" onsubmit="if (this.dataset.envoye) { return false; } this.dataset.envoye = '1';">
             @csrf
             @if ($errors->any())
                 <div class="erreurs">{{ $errors->first() }}</div>
@@ -99,7 +100,7 @@
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px">
                     <button class="bouton" type="submit" name="action" value="envoyer">Enregistrer et envoyer</button>
                 </div>
-                <p class="discret petit">L'indice se recalcule à chaque modification, sans rien enregistrer.</p>
+                <p class="discret petit">L'indice se recalcule à chaque modification, sans rien enregistrer. <span id="etat-apercu"></span></p>
             </div>
         </form>
 
@@ -109,10 +110,13 @@
             (() => {
                 const form = document.getElementById('grille');
                 const cible = document.getElementById('apercu');
+                const etat = document.getElementById('etat-apercu');
                 let minuterie, numero = 0;
 
                 const recalculer = () => {
                     clearTimeout(minuterie);
+                    etat.textContent = 'Recalcul…';
+                    etat.className = 'discret';
                     minuterie = setTimeout(async () => {
                         const n = ++numero;
                         try {
@@ -121,11 +125,20 @@
                                 body: new FormData(form),
                                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' },
                             });
-                            if (reponse.ok && n === numero) {
-                                cible.innerHTML = await reponse.text();
+                            if (n !== numero) return; // une réponse plus récente arrive
+                            // Déconnecté : fetch suit la redirection vers le login,
+                            // qu'il ne faut surtout pas afficher à la place de l'aperçu.
+                            if (reponse.redirected) throw new Error('déconnecté, rechargez la page');
+                            if (!reponse.ok) {
+                                throw new Error(reponse.status === 419 ? 'session expirée, rechargez la page' : 'erreur ' + reponse.status);
                             }
+                            cible.innerHTML = await reponse.text();
+                            etat.textContent = 'À jour.';
                         } catch (e) {
-                            // Hors ligne ou serveur arrêté : on garde le dernier aperçu.
+                            // On garde le dernier aperçu, mais on le dit : un échec
+                            // silencieux laisserait croire que l'indice n'a pas bougé.
+                            etat.textContent = 'Aperçu non mis à jour (' + e.message + ').';
+                            etat.className = 'rouge';
                         }
                     }, 300);
                 };
