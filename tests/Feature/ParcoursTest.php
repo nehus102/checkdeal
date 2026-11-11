@@ -53,6 +53,27 @@ class ParcoursTest extends TestCase
             ->assertSee('Prix non jugé : 1 prix comparable saisi, il en faut 3.');
     }
 
+    public function test_apercu_en_direct_sans_rien_enregistrer(): void
+    {
+        $submission = $this->deposer();
+
+        $this->withSession(['admin' => true])
+            ->post("/admin/annonces/{$submission->listing_id}/apercu", [
+                'price_amount' => '300',
+                'comparable_prices' => '700 ; 720 ; 680',
+                'seller_rating' => '4,',          // saisie en cours : pas d'erreur
+                'description' => 'Paiement par virement uniquement',
+                'score_final' => '50',
+            ])
+            ->assertOk()
+            ->assertSee('class="nombre orange">65', false)
+            ->assertSee('Indice envoyé : 50/100')
+            ->assertSee('Repéré dans la description');
+
+        $this->assertSame(0, $submission->listing->observations()->count());
+        $this->assertSame(0, $submission->listing->assessments()->count());
+    }
+
     public function test_une_saisie_refusee_garde_les_valeurs_tapees(): void
     {
         $submission = $this->deposer();

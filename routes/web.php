@@ -24,5 +24,6 @@ Route::middleware(EstAdmin::class)->prefix('admin')->name('admin.')->group(funct
     Route::post('/temoin', [AdminController::class, 'temoin'])->name('temoin');
     Route::get('/annonces/{listing}', [AdminController::class, 'show'])->name('show');
     Route::post('/annonces/{listing}', [AdminController::class, 'evaluer'])->name('evaluer');
+    Route::post('/annonces/{listing}/apercu', [AdminController::class, 'apercuLive'])->name('apercu');
     Route::get('/preuves/{evidence}', [AdminController::class, 'preuve'])->name('preuve');
 });

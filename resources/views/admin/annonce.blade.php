@@ -18,7 +18,7 @@
 
     <div class="deux-colonnes">
         {{-- Un double clic enregistrait deux évaluations : le second envoi est bloqué. --}}
-        <form method="post" action="{{ route('admin.evaluer', $listing) }}" onsubmit="if (this.dataset.envoye) { return false; } this.dataset.envoye = '1';">
+        <form id="grille" method="post" action="{{ route('admin.evaluer', $listing) }}" data-apercu="{{ route('admin.apercu', $listing) }}" onsubmit="if (this.dataset.envoye) { return false; } this.dataset.envoye = '1';">
             @csrf
             @if ($errors->any())
                 <div class="erreurs">{{ $errors->first() }}</div>
@@ -74,38 +74,16 @@
                 @endforeach
             </div>
 
-            @if ($apercu)
-                @php([$libelle, $couleur] = \App\Verification\RegleV1::verdict($apercu['score']))
-                @php($derniere = $historique->first())
-                @php($nbComparables = count(\App\Verification\RegleV1::liste($v('comparable_prices'))))
-                <div class="carte">
-                    <h3>Indice calculé avec les champs ci-dessus</h3>
-                    @if ($derniere)
-                        <p class="discret petit">Dernière évaluation enregistrée : <strong>{{ $derniere->final_score }}/100</strong> le {{ $derniere->created_at->format('d/m à H:i') }}@if ($derniere->final_score !== $derniere->computed_score) (calculé {{ $derniere->computed_score }}, ajusté)@endif.</p>
-                    @else
-                        <p class="discret petit">Pas encore enregistré : cliquez sur « Enregistrer et envoyer ».</p>
-                    @endif
-                    @if ($v('price_amount') !== '' && $nbComparables < \App\Verification\RegleV1::COMPARABLES_MIN)
-                        <p class="suggestion" style="display:inline-block">Prix non jugé : {{ $nbComparables }} prix comparable{{ $nbComparables > 1 ? 's' : '' }} saisi{{ $nbComparables > 1 ? 's' : '' }}, il en faut {{ \App\Verification\RegleV1::COMPARABLES_MIN }}.</p>
-                    @endif
-                    <div class="score">
-                        <div><span class="nombre {{ $couleur }}">{{ $apercu['score'] }}</span><span class="sur"> / 100</span></div>
-                        <div><span class="pastille fond-{{ $couleur }}">{{ $libelle }}</span><div class="discret petit">fiabilité {{ $apercu['confiance'] }} · règles {{ $apercu['version'] }}@if ($apercu['mediane']) · médiane {{ number_format($apercu['mediane'], 0, ',', ' ') }} €@endif</div></div>
-                    </div>
-                    <table style="margin-top:12px">
-                        @foreach ($apercu['signaux'] as $s)
-                            <tr>
-                                <td>{{ $catalogue[$s['code']][0] ?? $s['code'] }}</td>
-                                <td class="{{ $s['statut'] === 'present' ? 'rouge' : ($s['statut'] === 'absent' ? 'vert' : 'discret') }}">
-                                    {{ ['present' => 'oui', 'absent' => 'non', 'unknown' => 'non vérifié'][$s['statut']] }}
-                                    @if ($s['valeur']) ({{ $s['valeur'] }})@endif
-                                </td>
-                                <td>{{ $s['points'] ? '−' . $s['points'] : '' }}</td>
-                            </tr>
-                        @endforeach
-                    </table>
-                </div>
-            @endif
+            <div id="apercu" aria-live="polite">
+                @include('admin._apercu', [
+                    'apercu' => $apercu,
+                    'derniere' => $historique->first(),
+                    'prixSaisi' => $v('price_amount') !== '',
+                    'nbComparables' => count(\App\Verification\RegleV1::liste($v('comparable_prices'))),
+                    'scoreFinal' => old('score_final', $saisie['score_final'] ?? null),
+                    'suggestions' => $suggestions,
+                ])
+            </div>
 
             <div class="carte">
                 <h3>Résultat envoyé</h3>
@@ -119,11 +97,43 @@
                 <textarea id="justification" name="justification">{{ old('justification', $saisie['justification'] ?? '') }}</textarea>
 
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px">
-                    <button class="bouton secondaire" type="submit" name="action" value="apercu">Calculer l'aperçu</button>
                     <button class="bouton" type="submit" name="action" value="envoyer">Enregistrer et envoyer</button>
                 </div>
+                <p class="discret petit">L'indice se recalcule à chaque modification, sans rien enregistrer.</p>
             </div>
         </form>
+
+        <script>
+            // Recalcul en direct : le formulaire part au serveur, qui renvoie
+            // l'aperçu rendu. La réponse la plus récente seule est affichée.
+            (() => {
+                const form = document.getElementById('grille');
+                const cible = document.getElementById('apercu');
+                let minuterie, numero = 0;
+
+                const recalculer = () => {
+                    clearTimeout(minuterie);
+                    minuterie = setTimeout(async () => {
+                        const n = ++numero;
+                        try {
+                            const reponse = await fetch(form.dataset.apercu, {
+                                method: 'POST',
+                                body: new FormData(form),
+                                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' },
+                            });
+                            if (reponse.ok && n === numero) {
+                                cible.innerHTML = await reponse.text();
+                            }
+                        } catch (e) {
+                            // Hors ligne ou serveur arrêté : on garde le dernier aperçu.
+                        }
+                    }, 300);
+                };
+
+                form.addEventListener('input', recalculer);
+                form.addEventListener('change', recalculer);
+            })();
+        </script>
 
         <div>
             <div class="carte">

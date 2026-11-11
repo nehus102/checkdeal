@@ -66,7 +66,26 @@ class AdminController extends Controller
     {
         $obs = $listing->observationsCourantes();
 
-        return $this->formulaire($listing, $obs, $obs === [] ? null : $evaluations->apercu($obs));
+        return $this->formulaire($listing, $obs, $evaluations->apercu($obs));
+    }
+
+    /**
+     * L'aperçu recalculé pendant la saisie, sans rien enregistrer. Pas de
+     * validation : les règles ignorent déjà une valeur illisible, et une
+     * saisie en cours (« 4, ») ne doit pas faire clignoter une erreur.
+     */
+    public function apercuLive(Request $request, Listing $listing, EvaluationService $evaluations)
+    {
+        $obs = EvaluationService::observationsDepuis($listing, $request->all());
+
+        return view('admin._apercu', [
+            'apercu' => $evaluations->apercu($obs),
+            'derniere' => $listing->assessments()->latest('id')->first(),
+            'prixSaisi' => ($obs['price_amount'] ?? null) !== null,
+            'nbComparables' => count(RegleV1::liste($obs['comparable_prices'] ?? null)),
+            'scoreFinal' => $request->input('score_final'),
+            'suggestions' => AnalyseDescription::suggestions((string) ($obs['description'] ?? '')),
+        ]);
     }
 
     public function evaluer(Request $request, Listing $listing, EvaluationService $evaluations)
