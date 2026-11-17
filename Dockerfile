@@ -10,6 +10,12 @@ FROM serversideup/php:8.4-fpm-nginx
 
 ENV PHP_OPCACHE_ENABLE=1
 
+# intl n'est pas dans l'image de base : Laravel en a besoin pour Number::format
+# (php artisan db:show, et tout formatage de nombre ou de devise).
+USER root
+RUN install-php-extensions intl
+USER www-data
+
 WORKDIR /var/www/html
 
 # Dépendances d'abord, pour profiter du cache Docker tant que composer.lock
