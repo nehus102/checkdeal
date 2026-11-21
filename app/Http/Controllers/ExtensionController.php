@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Submission;
 use App\Verification\DepotDemande;
+use App\Verification\RecherchePhotos;
 use Illuminate\Http\Request;
 
 /**
@@ -46,6 +47,26 @@ class ExtensionController extends Controller
             'suivi_url' => route('demande.suivi', $submission->token),
             'deja_evaluee' => $dejaEvaluee,
         ], 201);
+    }
+
+    /** Les photos de l'annonce retrouvées à l'identique ailleurs sur le web. */
+    public function photos(Request $request, RecherchePhotos $recherche)
+    {
+        if (! RecherchePhotos::configuree()) {
+            return response()->json(['message' => "La recherche de photos n'est pas encore disponible."], 503);
+        }
+
+        $donnees = $request->validate([
+            'images' => ['required', 'array', 'min:1', 'max:20'],
+            'images.*' => ['string', 'max:2000'],
+        ]);
+
+        $images = array_values(array_filter($donnees['images'], [RecherchePhotos::class, 'imageAutorisee']));
+        if (! $images) {
+            return response()->json(['message' => "Ces photos ne viennent pas d'une annonce prise en charge."], 422);
+        }
+
+        return response()->json($recherche->analyser($images));
     }
 
     /**

@@ -23,6 +23,11 @@ return [
         'key' => env('BREVO_API_KEY'),
     ],
 
+    // Recherche des photos ailleurs (Google Lens), voir RecherchePhotos.
+    'serpapi' => [
+        'key' => env('SERPAPI_KEY', ''),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

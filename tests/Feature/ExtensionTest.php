@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Listing;
 use App\Models\Submission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -92,6 +93,51 @@ class ExtensionTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors('email');
         $this->assertSame(0, Submission::count());
+    }
+
+    public function test_photos_retrouvees_a_l_identique(): void
+    {
+        config(['services.serpapi.key' => 'cle']);
+        Http::fake(['serpapi.com/*' => Http::sequence()
+            ->push(['visual_matches' => [
+                ['link' => 'https://www.vinted.fr/items/1', 'exact_matches' => true],
+                ['link' => 'https://www.leboncoin.fr/ad/2', 'exact_matches' => true],
+            ]])
+            ->push(['visual_matches' => [['link' => 'https://presse.fr/a', 'exact_matches' => false]]])
+            ->push([], 500),
+        ]);
+
+        $this->postJson('/api/extension/photos', ['images' => [
+            'https://img.leboncoin.fr/api/v1/a.jpg',
+            'https://img.leboncoin.fr/api/v1/b.jpg',
+            'https://img.leboncoin.fr/api/v1/c.jpg',
+            'https://ailleurs.example/d.jpg',
+        ]])
+            ->assertOk()
+            ->assertJsonPath('risk_level', 'a_verifier')
+            ->assertJsonPath('score', 33)
+            ->assertJsonCount(3, 'image_matches')
+            ->assertJsonPath('image_matches.0.matches.0.domain', 'vinted.fr')
+            ->assertJsonCount(1, 'image_matches.0.matches')
+            ->assertJsonCount(0, 'image_matches.2.matches');
+
+        Http::assertSentCount(3);
+    }
+
+    public function test_photos_hors_plateforme_refusees_sans_appel(): void
+    {
+        config(['services.serpapi.key' => 'cle']);
+        Http::fake();
+
+        $this->postJson('/api/extension/photos', ['images' => ['https://ailleurs.example/d.jpg', 'http://img.leboncoin.fr/x.jpg']])
+            ->assertStatus(422);
+        Http::assertNothingSent();
+    }
+
+    public function test_photos_sans_cle_serpapi(): void
+    {
+        config(['services.serpapi.key' => '']);
+        $this->postJson('/api/extension/photos', ['images' => ['https://img.leboncoin.fr/a.jpg']])->assertStatus(503);
     }
 
     public function test_aucun_champ_inconnu_n_est_stocke(): void
