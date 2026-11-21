@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Evidence;
-use App\Models\Listing;
 use App\Models\Submission;
-use App\Verification\AnnonceUrl;
-use App\Verification\EvaluationService;
+use App\Verification\DepotDemande;
 use App\Verification\RegleV1;
 use Illuminate\Http\Request;
 
@@ -18,7 +16,7 @@ class DemandeController extends Controller
         return view('accueil');
     }
 
-    public function store(Request $request, EvaluationService $evaluations)
+    public function store(Request $request, DepotDemande $depot)
     {
         $donnees = $request->validate([
             'url' => ['required', 'url:http,https', 'max:2000'],
@@ -34,16 +32,8 @@ class DemandeController extends Controller
             'captures.*.max' => 'Chaque capture doit faire moins de 5 Mo.',
         ]);
 
-        $listing = Listing::firstOrCreate(
-            ['url_normalized' => AnnonceUrl::normaliser($donnees['url'])],
-            ['url' => $donnees['url'], 'platform' => AnnonceUrl::plateforme($donnees['url'])]
-        );
-
-        $submission = $listing->submissions()->create([
-            'channel' => Submission::CANAL_FORMULAIRE,
-            'email' => $donnees['email'],
-            'consent_followup' => $request->boolean('consent_followup'),
-        ]);
+        $submission = $depot->deposer($donnees['url'], $donnees['email'], $request->boolean('consent_followup'), Submission::CANAL_FORMULAIRE);
+        $listing = $submission->listing;
 
         foreach ($request->file('captures', []) as $fichier) {
             Evidence::create([
@@ -60,11 +50,7 @@ class DemandeController extends Controller
             ]);
         }
 
-        // Annonce déjà vérifiée récemment : le résultat part tout de suite.
-        $recente = $listing->assessments()->where('created_at', '>=', now()->subDays(EvaluationService::VALIDITE_JOURS))->exists();
-        if ($recente) {
-            $evaluations->repondre($submission);
-        }
+        $depot->repondreSiDejaEvaluee($submission);
 
         return redirect()->route('demande.suivi', $submission->token);
     }

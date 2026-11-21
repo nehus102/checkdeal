@@ -23,7 +23,7 @@ class EnvoyerRelances extends Command
         $envoyes = 0;
 
         foreach (config('verif.relances_jours') as $index => $delai) {
-            $candidats = Submission::where('channel', Submission::CANAL_FORMULAIRE)
+            $candidats = Submission::whereIn('channel', Submission::CANAUX_DEMANDE)
                 ->where('status', 'done')
                 ->where('consent_followup', true)
                 ->where('followups_sent', $index)

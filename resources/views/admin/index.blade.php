@@ -29,7 +29,7 @@
                         <td>{{ $s->created_at->diffForHumans(null, true) }}</td>
                         <td>{{ \App\Verification\AnnonceUrl::LIBELLES[$s->listing->platform] ?? $s->listing->platform }}</td>
                         <td class="coupe">{{ $s->listing->title ?: $s->listing->url_normalized }}</td>
-                        <td>{{ $s->channel === 'control_sample' ? 'Témoin' : 'Demande' }}</td>
+                        <td>{{ $s->libelleCanal() }}</td>
                         <td><a href="{{ route('admin.show', $s->listing) }}">Vérifier</a></td>
                     </tr>
                 @endforeach

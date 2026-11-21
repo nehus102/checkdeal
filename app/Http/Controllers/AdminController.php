@@ -50,7 +50,7 @@ class AdminController extends Controller
             'enAttente' => Submission::where('status', 'pending')->with('listing')->oldest()->get(),
             'recentes' => Listing::has('assessments')->with(['assessments' => fn ($q) => $q->latest('id')])->latest('updated_at')->limit(20)->get(),
             'stats' => [
-                'demandes' => Submission::where('channel', Submission::CANAL_FORMULAIRE)->count(),
+                'demandes' => Submission::whereIn('channel', Submission::CANAUX_DEMANDE)->count(),
                 'temoins' => Submission::where('channel', Submission::CANAL_TEMOIN)->count(),
                 'retours' => Outcome::whereIn('purchase_decision', ['bought', 'abandoned'])->count(),
                 'documentes' => Outcome::whereIn('certainty', ['evidenced', 'verified'])->count(),

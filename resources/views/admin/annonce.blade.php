@@ -166,10 +166,26 @@
                 @endif
             </div>
 
+            @php($infosExtension = array_filter([
+                'Indice de l\'extension' => $obs['extension_index'] ?? null,
+                'Favoris' => $obs['favorites_count'] ?? null,
+                'Badges du vendeur' => $obs['seller_badges'] ?? null,
+                'Transaction sécurisée' => $obs['secure_transaction'] ?? null,
+            ], fn ($v) => $v !== null && $v !== ''))
+            @if ($infosExtension)
+                <div class="carte">
+                    <h3>Relevé par l'extension</h3>
+                    @foreach ($infosExtension as $libelle => $valeur)
+                        <div class="petit">{{ $libelle }} : {{ $valeur }}</div>
+                    @endforeach
+                    <p class="discret petit">Lu sur la page par l'extension de l'acheteur : à recouper, comme les champs pré-remplis de la grille.</p>
+                </div>
+            @endif
+
             <div class="carte">
                 <h3>Demandes ({{ $listing->submissions->count() }})</h3>
                 @foreach ($listing->submissions as $s)
-                    <div class="petit">{{ $s->created_at->format('d/m H:i') }} · {{ $s->channel === 'control_sample' ? 'témoin' : 'demande' }} · {{ $s->status === 'done' ? 'répondue' : 'en attente' }}</div>
+                    <div class="petit">{{ $s->created_at->format('d/m H:i') }} · {{ mb_strtolower($s->libelleCanal()) }} · {{ $s->status === 'done' ? 'répondue' : 'en attente' }}</div>
                 @endforeach
             </div>
 
